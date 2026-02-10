@@ -87,6 +87,8 @@ class MonitorConfig(BaseModel):
     effect_floor: float = 0.5
     null_rate_increase: float = 0.05
     out_of_range_rate: float = 0.05
+    schema_violation_rate: float = 0.01
+    cardinality_ratio: float = 1.5
     unseen_category_rate: float = 0.02
     performance_drop: float = 0.05
     calibration_increase: float = 0.05
