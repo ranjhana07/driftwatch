@@ -62,3 +62,37 @@ def make_rows(
             }
         )
     return rows
+
+
+def to_events(rows: list[dict[str, Any]]):
+    from driftwatch.schemas import PredictionEvent
+
+    return [
+        PredictionEvent(
+            event_id=r["event_id"],
+            model=r["model"],
+            model_version=r["model_version"],
+            timestamp=r["timestamp"],
+            features=r["features"],
+            prediction=r["prediction"],
+            score=r["score"],
+            embedding=r["embedding"],
+            latency_ms=r["latency_ms"],
+        )
+        for r in rows
+    ]
+
+
+def to_labels(rows: list[dict[str, Any]], delay_seconds: float = 60.0):
+    from driftwatch.schemas import LabelEvent
+
+    return [
+        LabelEvent(
+            event_id=r["event_id"],
+            model=r["model"],
+            label=r["label"],
+            timestamp=r["timestamp"] + timedelta(seconds=delay_seconds),
+        )
+        for r in rows
+        if r["label"] is not None
+    ]
