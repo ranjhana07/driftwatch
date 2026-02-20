@@ -79,7 +79,7 @@ class MonitorConfig(BaseModel):
     alpha: float = 0.01
     psi_threshold: float = 0.2
     ks_effect: float = 0.1
-    wasserstein_threshold: float = 0.1
+    wasserstein_threshold: float = 0.2
     chi2_effect: float = 0.1
     js_threshold: float = 0.05
     mmd_effect: float = 0.02
