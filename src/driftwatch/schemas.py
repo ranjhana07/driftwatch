@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from datetime import datetime
 from typing import Literal
@@ -40,6 +41,16 @@ class PredictionEvent(BaseModel):
     @classmethod
     def _utc(cls, value: datetime) -> datetime:
         return as_utc(value)
+
+    @field_validator("features")
+    @classmethod
+    def _finite_features(cls, value: dict[str, FeatureValue]) -> dict[str, FeatureValue]:
+        return {k: (None if isinstance(v, float) and not math.isfinite(v) else v) for k, v in value.items()}
+
+    @field_validator("score", "latency_ms")
+    @classmethod
+    def _finite_number(cls, value: float | None) -> float | None:
+        return None if value is not None and not math.isfinite(value) else value
 
 
 class LabelEvent(BaseModel):
