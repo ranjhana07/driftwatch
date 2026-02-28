@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from datetime import datetime
 from typing import Literal
@@ -41,6 +42,16 @@ class PredictionEvent(BaseModel):
     def _utc(cls, value: datetime) -> datetime:
         return as_utc(value)
 
+    @field_validator("features")
+    @classmethod
+    def _finite_features(cls, value: dict[str, FeatureValue]) -> dict[str, FeatureValue]:
+        return {k: (None if isinstance(v, float) and not math.isfinite(v) else v) for k, v in value.items()}
+
+    @field_validator("score", "latency_ms")
+    @classmethod
+    def _finite_number(cls, value: float | None) -> float | None:
+        return None if value is not None and not math.isfinite(value) else value
+
 
 class LabelEvent(BaseModel):
     event_id: str = Field(min_length=1, max_length=64)
@@ -79,7 +90,7 @@ class MonitorConfig(BaseModel):
     alpha: float = 0.01
     psi_threshold: float = 0.2
     ks_effect: float = 0.1
-    wasserstein_threshold: float = 0.1
+    wasserstein_threshold: float = 0.2
     chi2_effect: float = 0.1
     js_threshold: float = 0.05
     mmd_effect: float = 0.02
