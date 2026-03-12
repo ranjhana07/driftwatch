@@ -186,3 +186,12 @@ def test_static_ui_is_served(store, tmp_path):
     with TestClient(create_app(store, Settings(ui_dir=tmp_path))) as c:
         assert "hello" in c.get("/").text
         assert c.get("/healthz").status_code == 200
+
+
+def test_cors_headers_when_configured(store):
+    settings = Settings(cors_origins="http://localhost:8080")
+    with TestClient(create_app(store, settings)) as c:
+        response = c.get("/healthz", headers={"Origin": "http://localhost:8080"})
+        assert response.headers["access-control-allow-origin"] == "http://localhost:8080"
+        other = c.get("/healthz", headers={"Origin": "http://evil.example"})
+        assert "access-control-allow-origin" not in other.headers

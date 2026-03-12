@@ -9,14 +9,29 @@ def _finite(values: np.ndarray) -> np.ndarray:
     return array[np.isfinite(array)]
 
 
-def psi(reference: np.ndarray, current: np.ndarray, bins: int = 10, epsilon: float = 1e-4) -> float:
+def quantile_edges(reference: np.ndarray, bins: int = 10) -> np.ndarray:
+    interior = np.quantile(_finite(reference), np.linspace(0.0, 1.0, bins + 1)[1:-1])
+    return np.unique(interior)
+
+
+def _bin_shares(values: np.ndarray, edges: np.ndarray) -> np.ndarray:
+    counts = np.bincount(np.searchsorted(edges, values, side="left"), minlength=edges.size + 1)
+    return counts / max(counts.sum(), 1)
+
+
+def psi(
+    reference: np.ndarray,
+    current: np.ndarray,
+    bins: int = 10,
+    epsilon: float = 1e-4,
+    edges: np.ndarray | None = None,
+) -> float:
     reference = _finite(reference)
     current = _finite(current)
-    edges = np.quantile(reference, np.linspace(0.0, 1.0, bins + 1))
-    ref_counts, _ = np.histogram(reference, bins=edges)
-    cur_counts, _ = np.histogram(current, bins=edges)
-    expected = np.clip(ref_counts / ref_counts.sum(), epsilon, None)
-    actual = np.clip(cur_counts / max(cur_counts.sum(), 1), epsilon, None)
+    if edges is None:
+        edges = quantile_edges(reference, bins)
+    expected = np.clip(_bin_shares(reference, edges), epsilon, None)
+    actual = np.clip(_bin_shares(current, edges), epsilon, None)
     return float(np.sum((actual - expected) * np.log(actual / expected)))
 
 

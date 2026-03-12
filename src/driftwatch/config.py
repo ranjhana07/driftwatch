@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     local_dir: Path = Path(".driftwatch/store")
     api_key: str | None = None
     ui_dir: Path | None = None
+    cors_origins: str | None = None
     host: str = "127.0.0.1"
     port: int = 8000
     alert_rules_path: Path | None = None

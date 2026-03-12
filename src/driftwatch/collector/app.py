@@ -8,6 +8,7 @@ from typing import Any
 
 import pandas as pd
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Response
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
@@ -47,6 +48,9 @@ def create_app(store: Store, settings: Settings | None = None) -> FastAPI:
         return record
 
     app = FastAPI(title="driftwatch collector", version=__version__)
+    if settings.cors_origins:
+        origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET"], allow_headers=["X-API-Key"])
     app.state.store = store
     app.state.monitor = monitor
     protected = [Depends(guard)]

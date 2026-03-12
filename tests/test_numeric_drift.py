@@ -97,3 +97,33 @@ def test_normalized_wasserstein_divides_by_reference_std(rng):
 
 def test_normalized_wasserstein_handles_constant_reference():
     assert normalized_wasserstein(np.ones(50), np.ones(50) * 2) == pytest.approx(1.0)
+
+
+def test_psi_counts_values_outside_the_reference_range(rng):
+    reference = rng.normal(0, 1, 5000)
+    current = rng.normal(6, 1, 2000)
+    value = psi(reference, current)
+    assert value > 5
+
+
+def test_psi_with_heavily_tied_reference():
+    reference = np.concatenate([np.zeros(900), np.linspace(1, 100, 100)])
+    same = np.concatenate([np.zeros(450), np.linspace(1, 100, 50)])
+    shifted = np.concatenate([np.zeros(200), np.linspace(1, 100, 300)])
+    assert psi(reference, same) < 0.01
+    assert psi(reference, shifted) > 0.5
+
+
+def test_psi_constant_reference_does_not_crash():
+    reference = np.full(100, 3.0)
+    assert psi(reference, np.full(50, 3.0)) == pytest.approx(0.0)
+    assert psi(reference, np.full(50, 4.0)) > 1.0
+
+
+def test_psi_is_symmetric_in_the_bin_formula_for_fixed_edges(rng):
+    from driftwatch.engine.numeric import quantile_edges
+
+    a = rng.normal(0, 1, 3000)
+    b = rng.normal(0.5, 1, 3000)
+    edges = quantile_edges(a)
+    assert psi(a, b, edges=edges) == pytest.approx(psi(b, a, edges=edges))
