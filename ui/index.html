@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>driftwatch</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <h1>driftwatch</h1>
+    <div class="controls">
+      <label>API key <input id="api-key" type="password" placeholder="optional" autocomplete="off"></label>
+      <label class="inline"><input id="auto-refresh" type="checkbox"> refresh every 30s</label>
+      <button id="refresh" type="button">Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="models-section">
+      <h2>Models</h2>
+      <div id="models" class="cards"></div>
+    </section>
+
+    <section id="detail" hidden>
+      <div class="section-head">
+        <h2 id="model-title"></h2>
+        <span id="model-meta" class="muted"></span>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Feature drift over time</h3>
+          <span class="muted">cell colour is the highest severity of any detector in that window</span>
+        </div>
+        <div id="heatmap" class="chart tall"></div>
+      </div>
+
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Distribution</h3>
+            <select id="feature-select"></select>
+          </div>
+          <div id="distribution" class="chart"></div>
+          <p id="distribution-note" class="muted"></p>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Performance on labelled traffic</h3>
+          </div>
+          <div id="performance" class="chart"></div>
+          <p id="performance-note" class="muted"></p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Alerts</h3>
+        </div>
+        <div id="alerts-timeline" class="chart short"></div>
+        <table id="alerts-table">
+          <thead><tr><th>Time</th><th>Level</th><th>Rule</th><th>Detail</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
