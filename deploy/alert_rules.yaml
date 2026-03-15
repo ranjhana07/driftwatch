@@ -1,0 +1,15 @@
+rules:
+  - name: drift-high
+    kinds: [drift]
+    min_level: high
+    cooldown_seconds: 3600
+  - name: quality-medium
+    kinds: [quality]
+    min_level: medium
+    consecutive: 2
+    cooldown_seconds: 3600
+  - name: performance-drop
+    kinds: [performance]
+    metrics: [auc, f1, rmse]
+    min_level: medium
+    cooldown_seconds: 7200
