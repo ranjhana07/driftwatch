@@ -1,0 +1,95 @@
+name: driftwatch
+
+x-driftwatch-env: &driftwatch-env
+  DRIFTWATCH_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-driftwatch}:${POSTGRES_PASSWORD:-driftwatch}@postgres:5432/${POSTGRES_DB:-driftwatch}
+  DRIFTWATCH_API_KEY: ${DRIFTWATCH_API_KEY:-}
+  DRIFTWATCH_ALERT_RULES_PATH: /app/deploy/alert_rules.yaml
+  DRIFTWATCH_SLACK_WEBHOOK_URL: ${DRIFTWATCH_SLACK_WEBHOOK_URL:-}
+  DRIFTWATCH_SMTP_HOST: ${DRIFTWATCH_SMTP_HOST:-}
+  DRIFTWATCH_SMTP_PORT: ${DRIFTWATCH_SMTP_PORT:-587}
+  DRIFTWATCH_SMTP_USERNAME: ${DRIFTWATCH_SMTP_USERNAME:-}
+  DRIFTWATCH_SMTP_PASSWORD: ${DRIFTWATCH_SMTP_PASSWORD:-}
+  DRIFTWATCH_SMTP_FROM: ${DRIFTWATCH_SMTP_FROM:-driftwatch@localhost}
+  DRIFTWATCH_SMTP_TO: ${DRIFTWATCH_SMTP_TO:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-driftwatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driftwatch}
+      POSTGRES_DB: ${POSTGRES_DB:-driftwatch}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-driftwatch} -d ${POSTGRES_DB:-driftwatch}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  collector:
+    build: .
+    command: sh -c "driftwatch db upgrade && driftwatch serve"
+    environment:
+      <<: *driftwatch-env
+      DRIFTWATCH_CORS_ORIGINS: ${DRIFTWATCH_CORS_ORIGINS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  scheduler:
+    build: .
+    command: driftwatch scheduler
+    environment:
+      <<: *driftwatch-env
+    depends_on:
+      collector:
+        condition: service_healthy
+    ports:
+      - "9102:9102"
+
+  ui:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./ui:/usr/share/nginx/html:ro
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - collector
+    ports:
+      - "8080:80"
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      - collector
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-data:
+  prometheus-data:
+  grafana-data:
