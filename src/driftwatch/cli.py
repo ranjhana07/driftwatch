@@ -34,6 +34,7 @@ def _settings() -> Settings:
 @app.callback()
 def main(verbose: bool = typer.Option(False, "--verbose", "-v", help="debug logging")) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 @app.command()
