@@ -10,12 +10,14 @@ from driftwatch.engine.detectors import (
     finalize,
     numeric_detections,
 )
-from driftwatch.engine.profile import ReferenceProfile, performance_for
+from driftwatch.engine.profile import ReferenceProfile, performance_with_errors
 from driftwatch.engine.quality import quality_findings
 from driftwatch.engine.severity import level_for, severity_from_ratio
 from driftwatch.engine.window import Window
 from driftwatch.schemas import MonitorConfig
 from driftwatch.types import MetricResult
+
+NOISE_MULTIPLE = 2.0
 
 
 def evaluate_window(
@@ -98,14 +100,15 @@ def _performance_results(
 ) -> list[MetricResult]:
     if labeled.size < config.min_labeled or not profile.baseline:
         return []
-    current = performance_for(labeled, task_type, positive_label)
+    current = performance_with_errors(labeled, task_type, positive_label)
     results = []
-    for metric, value in current.items():
+    for metric, (value, error) in current.items():
         baseline = profile.baseline.get(metric)
         if baseline is None:
             continue
         ratio, trackable = _performance_effect(metric, baseline, value, config)
-        flagged = trackable and ratio >= 1.0
+        change = abs(value - baseline)
+        flagged = trackable and ratio >= 1.0 and change > NOISE_MULTIPLE * error
         severity = severity_from_ratio(ratio, flagged)
         results.append(
             MetricResult(
