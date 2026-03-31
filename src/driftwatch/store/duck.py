@@ -79,6 +79,29 @@ class DuckStore(Store):
         pq.write_table(table, staging)
         staging.replace(directory / name)
 
+    def compact(self, model: str, rows_per_file: int = 250_000) -> int:
+        removed = self._compact("events", model, EVENT_SCHEMA, "event_id", "ts", rows_per_file)
+        removed += self._compact("labels", model, LABEL_SCHEMA, "event_id", "labeled_at", rows_per_file)
+        return removed
+
+    def _compact(
+        self, kind: str, model: str, schema: pa.Schema, key: str, order: str, rows_per_file: int
+    ) -> int:
+        files = self._files(kind, model)
+        if len(files) < 2:
+            return 0
+        sql = (
+            f"select * from read_parquet(?) qualify row_number() over (partition by {key} order by {order}) = 1 "
+            f"order by {order}"
+        )
+        with self._lock:
+            table = self._conn.sql(sql, params=[files]).to_arrow_table().cast(schema)
+        for offset in range(0, table.num_rows, rows_per_file):
+            self._write_part(kind, model, table.slice(offset, rows_per_file))
+        for path in files:
+            Path(path).unlink(missing_ok=True)
+        return len(files)
+
     def upsert_model(self, record: ModelRecord) -> ModelRecord:
         existing = self.get_model(record.name)
         created = existing.created_at if existing else from_naive_utc(to_naive_utc(utcnow()))
