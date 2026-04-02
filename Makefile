@@ -1,6 +1,6 @@
 PYTHON ?= python
 
-.PHONY: install test compile serve ui scheduler demo bench up down clean
+.PHONY: install test compile serve scheduler demo bench up down clean
 
 install:
 	$(PYTHON) -m pip install -e ".[server,dev]"
@@ -17,6 +17,13 @@ serve:
 
 scheduler:
 	$(PYTHON) -m driftwatch scheduler
+
+demo:
+	$(PYTHON) -m driftwatch demo run
+
+bench:
+	$(PYTHON) -m driftwatch bench detection --out results
+	$(PYTHON) -m driftwatch bench overhead --out results
 
 up:
 	docker compose up --build -d
