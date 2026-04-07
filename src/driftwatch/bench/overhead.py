@@ -246,5 +246,6 @@ def run_overhead(out_dir: Path, scale: float = 1.0, log: Callable[[str], None] =
     log("local store read and write")
     results["local_store"] = store_read_write(int(50_000 * scale))
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "overhead.json").write_text(json.dumps(results, indent=2) + "\n", encoding="utf-8")
+    with open(out_dir / "overhead.json", "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(results, indent=2) + "\n")
     return results

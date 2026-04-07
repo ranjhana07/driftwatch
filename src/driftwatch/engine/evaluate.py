@@ -17,7 +17,7 @@ from driftwatch.engine.window import Window
 from driftwatch.schemas import MonitorConfig
 from driftwatch.types import MetricResult
 
-NOISE_MULTIPLE = 2.0
+NOISE_MULTIPLE = 3.0
 
 
 def evaluate_window(

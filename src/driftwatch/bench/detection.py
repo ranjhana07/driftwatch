@@ -186,8 +186,10 @@ def run_detection(config: DetectionConfig, log: Callable[[str], None] = print) -
 def write_results(config: DetectionConfig, windows: pd.DataFrame, summary: pd.DataFrame) -> None:
     out = config.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    windows.to_csv(out / "detection_windows.csv", index=False, float_format="%.6g")
-    summary.to_csv(out / "detection_summary.csv", index=False, float_format="%.4g")
+    windows.to_csv(out / "detection_windows.csv", index=False, float_format="%.6g", lineterminator="
+")
+    summary.to_csv(out / "detection_summary.csv", index=False, float_format="%.4g", lineterminator="
+")
     meta = {
         "config": {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(config).items()},
         "monitor_config": MonitorConfig(window_seconds=config.window_seconds).model_dump(),
