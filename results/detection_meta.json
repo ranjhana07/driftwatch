@@ -15,7 +15,6 @@
     "step_seconds": 7200,
     "label_lag_seconds": 3600.0,
     "reference_rows": 4000,
-    "cache_dir": "C:\\Users\\Hp\\AppData\\Local\\Temp\\claude\\322f3ff8ed26200d\\340d0c95-d375-40be-8bb0-6c2b695b6231\\scratchpad\\dw-demo",
     "out_dir": "results"
   },
   "monitor_config": {
@@ -41,7 +40,7 @@
     "calibration_increase": 0.05,
     "rmse_ratio": 1.25
   },
-  "mean_eval_seconds_per_window": 0.9952348222211004,
+  "mean_eval_seconds_per_window": 1.3178438217800834,
   "windows": 900,
   "environment": {
     "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",

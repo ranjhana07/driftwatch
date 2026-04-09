@@ -186,15 +186,14 @@ def run_detection(config: DetectionConfig, log: Callable[[str], None] = print) -
 def write_results(config: DetectionConfig, windows: pd.DataFrame, summary: pd.DataFrame) -> None:
     out = config.out_dir
     out.mkdir(parents=True, exist_ok=True)
-    windows.to_csv(out / "detection_windows.csv", index=False, float_format="%.6g", lineterminator="
-")
-    summary.to_csv(out / "detection_summary.csv", index=False, float_format="%.4g", lineterminator="
-")
+    windows.to_csv(out / "detection_windows.csv", index=False, float_format="%.6g", lineterminator="\n")
+    summary.to_csv(out / "detection_summary.csv", index=False, float_format="%.4g", lineterminator="\n")
     meta = {
-        "config": {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(config).items()},
+        "config": {k: (str(v) if isinstance(v, Path) else v) for k, v in asdict(config).items() if k != "cache_dir"},
         "monitor_config": MonitorConfig(window_seconds=config.window_seconds).model_dump(),
         "mean_eval_seconds_per_window": float(windows["eval_seconds"].mean()),
         "windows": int(len(windows)),
         "environment": describe(),
     }
-    (out / "detection_meta.json").write_text(json.dumps(meta, indent=2) + "\n", encoding="utf-8")
+    with open(out / "detection_meta.json", "w", encoding="utf-8", newline="\n") as handle:
+        handle.write(json.dumps(meta, indent=2) + "\n")
