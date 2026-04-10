@@ -1,0 +1,56 @@
+{
+  "config": {
+    "scenarios": [
+      "none",
+      "covariate_shift",
+      "prior_shift",
+      "concept_drift",
+      "null_burst"
+    ],
+    "seeds": 5,
+    "n_events": 9000,
+    "onset": 4500,
+    "seconds_per_event": 30.0,
+    "window_seconds": 14400,
+    "step_seconds": 7200,
+    "label_lag_seconds": 3600.0,
+    "reference_rows": 4000,
+    "out_dir": "results"
+  },
+  "monitor_config": {
+    "window_seconds": 14400,
+    "interval_seconds": 300,
+    "min_samples": 200,
+    "min_labeled": 100,
+    "alpha": 0.01,
+    "psi_threshold": 0.2,
+    "ks_effect": 0.1,
+    "wasserstein_threshold": 0.2,
+    "chi2_effect": 0.1,
+    "js_threshold": 0.05,
+    "mmd_effect": 0.02,
+    "domain_auc_threshold": 0.65,
+    "effect_floor": 0.5,
+    "null_rate_increase": 0.05,
+    "out_of_range_rate": 0.05,
+    "schema_violation_rate": 0.01,
+    "cardinality_ratio": 1.5,
+    "unseen_category_rate": 0.02,
+    "performance_drop": 0.05,
+    "calibration_increase": 0.05,
+    "rmse_ratio": 1.25
+  },
+  "mean_eval_seconds_per_window": 1.3178438217800834,
+  "windows": 900,
+  "environment": {
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "logical_cpus": 12,
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "scikit_learn": "1.9.1",
+    "pandas": "3.1.1",
+    "duckdb": "2.0.1"
+  }
+}

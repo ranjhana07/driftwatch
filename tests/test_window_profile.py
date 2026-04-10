@@ -83,3 +83,23 @@ def test_profile_round_trips_through_json():
     restored = type(profile).model_validate_json(profile.model_dump_json())
     assert restored == profile
     assert np.isclose(restored.features["age"].mean, profile.features["age"].mean)
+
+
+def test_performance_errors_shrink_with_more_labels():
+    from driftwatch.engine.profile import performance_with_errors
+
+    small = performance_with_errors(Window.from_rows(make_rows(150, seed=30)), "classification", 1)
+    large = performance_with_errors(Window.from_rows(make_rows(3000, seed=31)), "classification", 1)
+    assert small["auc"][1] > large["auc"][1] > 0
+    assert 0.5 < large["auc"][0] < 1.0
+
+
+def test_performance_errors_for_regression():
+    from driftwatch.engine.profile import performance_with_errors
+
+    rows = make_rows(400, seed=32)
+    for row in rows:
+        row["prediction"] = float(row["score"])
+        row["label"] = float(row["score"]) + 0.1
+    out = performance_with_errors(Window.from_rows(rows), "regression", 1)
+    assert out["rmse"][0] == pytest.approx(0.1, abs=1e-6)

@@ -19,10 +19,14 @@ db_app = typer.Typer(help="database migrations", no_args_is_help=True)
 models_app = typer.Typer(help="registered models", no_args_is_help=True)
 monitor_app = typer.Typer(help="run monitors by hand", no_args_is_help=True)
 alerts_app = typer.Typer(help="alert history", no_args_is_help=True)
+demo_app = typer.Typer(help="demo traffic with injected drift", no_args_is_help=True)
+bench_app = typer.Typer(help="benchmarks", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 app.add_typer(models_app, name="models")
 app.add_typer(monitor_app, name="monitor")
 app.add_typer(alerts_app, name="alerts")
+app.add_typer(demo_app, name="demo")
+app.add_typer(bench_app, name="bench")
 
 
 def _settings() -> Settings:
@@ -32,6 +36,7 @@ def _settings() -> Settings:
 @app.callback()
 def main(verbose: bool = typer.Option(False, "--verbose", "-v", help="debug logging")) -> None:
     logging.basicConfig(level=logging.DEBUG if verbose else logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 @app.command()
@@ -96,6 +101,17 @@ def models_list() -> None:
         bounds = store.time_bounds(record.name)
         span = f"{bounds[0].isoformat()} .. {bounds[1].isoformat()}" if bounds else "no events"
         typer.echo(f"{record.name}\t{record.task_type}\t{store.event_count(record.name)} events\t{span}")
+
+
+@models_app.command("compact")
+def models_compact(name: str) -> None:
+    from driftwatch.store.duck import DuckStore
+
+    store = make_store(_settings())
+    if not isinstance(store, DuckStore):
+        typer.echo("compaction only applies to the local parquet store", err=True)
+        raise typer.Exit(1)
+    typer.echo(f"merged {store.compact(name)} files")
 
 
 @models_app.command("register")
@@ -169,3 +185,60 @@ def alerts_list(model: Optional[str] = None, limit: int = 20, as_json: bool = ty
         return
     for alert in alerts:
         typer.echo(f"{alert.created_at.isoformat()}  {alert.level:<8} {alert.model}/{alert.rule}  {alert.message}")
+
+
+@demo_app.command("run")
+def demo_run(
+    endpoint: str = typer.Option("http://127.0.0.1:8000", help="collector url"),
+    scenario: str = typer.Option("all", help="none, covariate_shift, prior_shift, concept_drift, null_burst or all"),
+    events: int = typer.Option(9000, help="events per scenario"),
+    onset: int = typer.Option(4500, help="event index where drift starts"),
+    ramp: int = typer.Option(0, help="events over which drift ramps in, 0 for abrupt"),
+    seed: int = 0,
+    api_key: Optional[str] = typer.Option(None, envvar="DRIFTWATCH_API_KEY"),
+    cache_dir: Path = typer.Option(Path(".driftwatch/demo"), help="dataset and model cache"),
+) -> None:
+    from driftwatch.demo.producer import DemoConfig, run_demo
+    from driftwatch.demo.scenarios import SCENARIOS
+
+    chosen = list(SCENARIOS) if scenario == "all" else [scenario]
+    unknown = [s for s in chosen if s not in SCENARIOS]
+    if unknown:
+        typer.echo(f"unknown scenario {unknown[0]}", err=True)
+        raise typer.Exit(2)
+    config = DemoConfig(
+        endpoint=endpoint,
+        api_key=api_key,
+        scenarios=chosen,
+        n_events=events,
+        onset=onset,
+        ramp=ramp,
+        seed=seed,
+        cache_dir=cache_dir,
+    )
+    run_demo(config, log=typer.echo)
+
+
+@bench_app.command("detection")
+def bench_detection(
+    seeds: int = typer.Option(5, help="independent streams per scenario"),
+    out: Path = typer.Option(Path("results"), help="output directory"),
+    cache_dir: Path = typer.Option(Path(".driftwatch/demo"), help="dataset and model cache"),
+) -> None:
+    from driftwatch.bench.detection import DetectionConfig, run_detection, write_results
+
+    config = DetectionConfig(seeds=seeds, out_dir=out, cache_dir=cache_dir)
+    windows, summary = run_detection(config, log=typer.echo)
+    write_results(config, windows, summary)
+    typer.echo(summary.to_string(index=False))
+
+
+@bench_app.command("overhead")
+def bench_overhead(
+    out: Path = typer.Option(Path("results"), help="output directory"),
+    scale: float = typer.Option(1.0, help="multiplier on the event counts"),
+) -> None:
+    from driftwatch.bench.overhead import run_overhead
+
+    results = run_overhead(out, scale, log=typer.echo)
+    typer.echo(json.dumps({k: v for k, v in results.items() if k != "environment"}, indent=2))

@@ -49,3 +49,32 @@ def test_events_for_different_models_go_to_separate_directories(tmp_path):
     assert (tmp_path / "events" / "a").is_dir()
     assert (tmp_path / "events" / "b").is_dir()
     store.close()
+
+
+def test_compaction_merges_parts_and_keeps_rows(tmp_path):
+    store = DuckStore(tmp_path)
+    rows = make_rows(120, spacing_seconds=60)
+    for i in range(0, 120, 20):
+        store.add_events(to_events(rows[i : i + 20]))
+    store.add_labels(to_labels(rows[:60]))
+    store.add_labels(to_labels(rows[60:]))
+    before = store.read_events("churn", T0, T0 + timedelta(days=1))
+    merged = store.compact("churn")
+    assert merged == 8
+    assert len(list((tmp_path / "events" / "churn").glob("*.parquet"))) == 1
+    assert len(list((tmp_path / "labels" / "churn").glob("*.parquet"))) == 1
+    assert store.read_events("churn", T0, T0 + timedelta(days=1)) == before
+    assert len(store.read_labeled_events("churn", T0, T0 + timedelta(days=1))) == 120
+    store.close()
+
+
+def test_compaction_drops_duplicate_events_and_splits_large_outputs(tmp_path):
+    store = DuckStore(tmp_path)
+    rows = make_rows(50)
+    store.add_events(to_events(rows))
+    store.add_events(to_events(rows))
+    store.compact("churn", rows_per_file=20)
+    assert store.event_count("churn") == 50
+    assert len(list((tmp_path / "events" / "churn").glob("*.parquet"))) == 3
+    assert store.compact("nothing") == 0
+    store.close()

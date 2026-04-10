@@ -96,3 +96,15 @@ def test_severity_grows_with_shift(profile, reference):
     pick = lambda results: next(r for r in results if r.feature == "age" and r.metric == "psi")
     assert pick(strong).severity > pick(mild).severity
     assert pick(strong).level in {"high", "critical"}
+
+
+def test_small_performance_wobble_is_not_flagged(profile, reference):
+    results = run(profile, reference, make_rows(300, seed=21, flip_rate=0.03))
+    assert ("performance", "", "auc") not in flagged(results, "performance")
+
+
+def test_performance_results_report_labeled_count(profile, reference):
+    results = run(profile, reference, make_rows(400, seed=22))
+    auc = next(r for r in results if r.kind == "performance" and r.metric == "auc")
+    assert auc.n_cur == 400
+    assert auc.n_ref == 3000

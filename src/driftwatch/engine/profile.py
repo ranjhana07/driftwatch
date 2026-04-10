@@ -3,12 +3,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
+import numpy as np
+
 import pandas as pd
 from pydantic import BaseModel, Field
 
 from driftwatch.engine.categorical import normalize
 from driftwatch.engine.performance import classification_metrics, regression_metrics
-from driftwatch.engine.window import OUTPUT_COLUMNS, OUTPUT_PREDICTION, Window
+from driftwatch.engine.window import OUTPUT_COLUMNS, OUTPUT_PREDICTION, OUTPUT_SCORE, Window
 from driftwatch.timeutil import utcnow
 
 MAX_TRACKED_CATEGORIES = 200
@@ -100,3 +102,27 @@ def performance_for(labeled: Window, task_type: str, positive_label: Any) -> dic
     scores = labeled.frame["__score"].to_numpy(dtype=float)
     return classification_metrics(labels, predictions, scores, positive_label)
 
+
+
+def performance_with_errors(
+    labeled: Window, task_type: str, positive_label: Any, resamples: int = 60, seed: int = 0
+) -> dict[str, tuple[float, float]]:
+    point = performance_for(labeled, task_type, positive_label)
+    predictions = labeled.frame[OUTPUT_PREDICTION].to_numpy()
+    labels = labeled.labels.to_numpy()
+    scores = labeled.frame[OUTPUT_SCORE].to_numpy(dtype=float)
+    rng = np.random.default_rng(seed)
+    draws: dict[str, list[float]] = {name: [] for name in point}
+    for _ in range(resamples):
+        index = rng.integers(0, len(labels), len(labels))
+        if task_type == "regression":
+            sample = regression_metrics(labels[index].astype(float), predictions[index].astype(float))
+        else:
+            sample = classification_metrics(labels[index], predictions[index], scores[index], positive_label)
+        for name, value in sample.items():
+            if name in draws:
+                draws[name].append(value)
+    return {
+        name: (value, float(np.std(draws[name])) if len(draws[name]) > 1 else 0.0)
+        for name, value in point.items()
+    }
