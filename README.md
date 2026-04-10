@@ -226,6 +226,61 @@ Event body:
 
 Prometheus series exported by the collector: `driftwatch_drift_score`, `driftwatch_drift_flagged`, `driftwatch_quality_value`, `driftwatch_performance`, `driftwatch_model_severity`, `driftwatch_last_window_timestamp_seconds`, `driftwatch_events_ingested_total`, `driftwatch_labels_ingested_total`, `driftwatch_ingest_batch_seconds`. The scheduler adds `driftwatch_monitor_runs_total`, `driftwatch_monitor_run_seconds` and `driftwatch_alerts_raised_total`.
 
+## Results
+
+Everything below was produced by this repository's own benchmarks on one machine: 13th Gen Intel(R) Core(TM) i5-13420H (12 logical CPUs), Windows-11-10.0.26200-SP0, Python 3.12.10, numpy 2.5.5, scipy 1.18.1, scikit-learn 1.9.1, pandas 3.1.1, DuckDB 2.0.1. The machine was in use for other work while the benchmarks ran, so timings are noisy. Raw output is in `results/`.
+
+### Detection
+
+```
+driftwatch bench detection --seeds 5 --out results
+```
+
+Setup: the model is a logistic regression trained on 20,000 UCI Adult rows; 4,000 other rows are the reference dataset. Each run replays 9,000 events at one event per 30 simulated seconds. Drift starts at event 4,500, abruptly. Windows are 4 hours long and evaluated every 2 hours; labels arrive 1 hour after the prediction. There are 5 seeds per scenario, 900 windows in total, default `MonitorConfig` thresholds with alpha 0.01.
+
+Each cell is the true positive rate over windows that lie entirely after the onset (85 windows per scenario), then the median delay in hours between the onset and the end of the first flagged window, taken over runs that detected the drift. `-` means no run detected it. The second column is the share of the 180 windows of the no-drift control that the detector flagged. A detector counts as flagged when any feature (or the embedding) is flagged by it in that window. `any` is every check combined.
+
+| Detector | clean windows flagged | covariate_shift | prior_shift | concept_drift | null_burst |
+| --- | --- | --- | --- | --- | --- |
+| `psi` | 0.000 | 1.00 / 4.5 h | 0.02 / 19.5 h | 0.00 / - | 0.00 / - |
+| `ks` | 0.000 | 1.00 / 2.5 h | 1.00 / 2.5 h | 0.00 / - | 0.13 / 8.5 h |
+| `wasserstein` | 0.000 | 1.00 / 2.5 h | 1.00 / 2.5 h | 0.00 / - | 0.04 / 10.5 h |
+| `chi2` | 0.011 | 1.00 / 2.5 h | 1.00 / 2.5 h | 0.02 / 14.5 h | 1.00 / 0.5 h |
+| `js` | 0.000 | 0.41 / 4.5 h | 0.00 / - | 0.00 / - | 1.00 / 2.5 h |
+| `mmd` | 0.000 | 1.00 / 4.5 h | 0.08 / 10.5 h | 0.00 / - | 0.00 / - |
+| `domain_classifier` | 0.000 | 1.00 / 4.5 h | 0.00 / - | 0.00 / - | 0.00 / - |
+| `null_rate` | 0.000 | 0.00 / - | 0.00 / - | 0.00 / - | 1.00 / 0.5 h |
+| `performance` | 0.028 | 0.29 / 4.5 h | 1.00 / 2.5 h | 1.00 / 2.5 h | 0.26 / 10.5 h |
+| `any` | 0.039 | 1.00 / 2.5 h | 1.00 / 2.5 h | 1.00 / 2.5 h | 1.00 / 0.5 h |
+
+Reading the table:
+
+- Covariate shift is caught by every distribution test, `ks`, `wasserstein` and `chi2` first (2.5 h after onset). `psi` and the embedding tests need a window that is mostly drifted data (4.5 h).
+- Prior shift barely moves the input features: `psi`, `js`, `mmd` and the domain classifier mostly stay quiet. `ks`, `wasserstein`, `chi2` and the performance check flag it. The results do not record which feature triggered a detector.
+- Concept drift changes no input, so the drift detectors stay quiet (`chi2` flags 2% of windows). Only the performance check, which needs labels, catches it.
+- The null burst is caught first by the null-rate check and `chi2` (0.5 h), then `js`. `psi`, `mmd` and the domain classifier did not flag it in any window.
+- Windows flagged in the clean control: 3.9% for all checks combined, mostly from the performance check (`0.028`) and `chi2` (`0.011`).
+- The performance check also flags 29% of covariate shift windows and 26% of null burst windows with a median delay of 4.5 and 10.5 hours.
+
+Evaluating one 4-hour window (about 480 events, 16 monitored columns, 8-dimensional embeddings, bootstrap error bars, MMD permutations and a cross-validated domain classifier) took 1.32 s on average over the 900 windows.
+
+### Overhead and throughput
+
+```
+driftwatch bench overhead --out results
+```
+
+| Measurement | Result |
+| --- | --- |
+| `log_prediction` call, 10 features plus an 8-dimensional embedding, 100,000 calls | mean 22.47 us, p50 6.9 us, p95 11.9 us, p99 49.3 us |
+| End to end, SDK to a collector in a separate process, local DuckDB and Parquet mode, 50,000 events in batches of 500 | 9,670 events per second, 5.171 s from first call to last stored event, 50,000 stored, 0 dropped |
+| `POST /v1/events`, 500 events per request, 100 requests | p50 43.38 ms, p95 59.23 ms (one slow request at 369.55 ms) |
+| DuckStore writing 50,000 events as 100 Parquet parts | 17,115 events per second |
+| Reading a 480-event window from 100 parts | p50 67.81 ms |
+| Same read after `compact()` to 1 file | p50 42.61 ms |
+
+The call latency is the cost to the serving thread: the event goes on a queue and a background thread does the work. The maximum single call in that run was 199 ms, a pause rather than a typical cost. The throughput test runs the client and the collector on the same machine, so they compete for CPU. PostgreSQL mode and the Docker Compose stack were not benchmarked.
+
 ## Project layout
 
 ```

@@ -1,0 +1,63 @@
+{
+  "environment": {
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "logical_cpus": 12,
+    "os": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.10",
+    "numpy": "2.5.5",
+    "scipy": "1.18.1",
+    "scikit_learn": "1.9.1",
+    "pandas": "3.1.1",
+    "duckdb": "2.0.1"
+  },
+  "sdk_enqueue": {
+    "calls": 100000,
+    "call_microseconds": {
+      "mean": 22.47,
+      "p50": 6.9,
+      "p95": 11.9,
+      "p99": 49.3,
+      "max": 198656.6
+    },
+    "calls_per_second": 41063,
+    "sent_to_noop_transport": 100000
+  },
+  "end_to_end": {
+    "events": 50000,
+    "batch_size": 500,
+    "enqueue_seconds": 0.648,
+    "total_seconds": 5.171,
+    "events_per_second": 9670,
+    "sent": 50000,
+    "rejected": 0,
+    "dropped": 0,
+    "stored": 50000
+  },
+  "ingest_batch": {
+    "batches": 100,
+    "batch_size": 500,
+    "request_milliseconds": {
+      "mean": 51.02,
+      "p50": 43.38,
+      "p95": 59.23,
+      "p99": 369.55,
+      "max": 369.55
+    },
+    "per_event_microseconds_p50": 86.8
+  },
+  "local_store": {
+    "events": 50000,
+    "write_events_per_second": 17115,
+    "parquet_parts": 100,
+    "read_window_events": 480,
+    "read_window_milliseconds": {
+      "p50": 67.81,
+      "p95": 84.9
+    },
+    "parquet_parts_after_compaction": 1,
+    "read_window_milliseconds_after_compaction": {
+      "p50": 42.61,
+      "p95": 55.72
+    }
+  }
+}
