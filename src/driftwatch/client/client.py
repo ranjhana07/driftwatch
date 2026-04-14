@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import logging
 import queue
 import threading
@@ -82,6 +83,7 @@ class Client:
         self._closed = False
         self._worker = threading.Thread(target=self._run, name="driftwatch-client", daemon=True)
         self._worker.start()
+        atexit.register(self.close)
 
     def log_prediction(
         self,
@@ -139,6 +141,7 @@ class Client:
         if self._closed:
             return
         self._closed = True
+        atexit.unregister(self.close)
         self.flush(timeout)
         self._queue.put(_STOP)
         self._worker.join(timeout)

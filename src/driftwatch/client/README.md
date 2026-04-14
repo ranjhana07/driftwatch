@@ -28,6 +28,6 @@ monitor.log_label(event_id, label=1)
 - 5xx responses, 408, 429 and connection errors are retried with exponential backoff (`max_retries`, `backoff_base`). Other 4xx responses are counted as rejected and not retried.
 - With `buffer_dir` set, batches that still fail are written to disk as JSON files and replayed, oldest first, once the collector answers again. The buffer is capped by `buffer_max_bytes`; the oldest files go first.
 - `sample_rate` keeps a deterministic share of events, chosen by hashing the event id. A label for a sampled-out event is skipped too, so the collector never sees labels without predictions.
-- `flush()` blocks until everything queued has been delivered or spilled. `close()` flushes and stops the thread.
+- `flush()` blocks until everything queued has been delivered or spilled. `close()` flushes and stops the thread, and is also registered with `atexit`.
 
 `AdminClient` in `driftwatch.client.admin` wraps the model registration, reference upload and monitor endpoints.

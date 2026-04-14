@@ -119,3 +119,12 @@ def test_measure_reports_milliseconds():
         with client.measure() as timer:
             sum(range(1000))
     assert timer.ms > 0
+
+
+def test_close_is_idempotent_and_flushes():
+    collector = Collector()
+    client = make_client(collector, flush_interval=30)
+    client.log_prediction({"x": 1}, prediction=1)
+    client.close()
+    client.close()
+    assert client.stats.sent == 1
