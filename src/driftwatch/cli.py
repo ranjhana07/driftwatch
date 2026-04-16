@@ -49,35 +49,41 @@ def serve(
     host: Optional[str] = typer.Option(None, help="bind address"),
     port: Optional[int] = typer.Option(None, help="bind port"),
     ui_dir: Optional[Path] = typer.Option(None, help="serve the static ui from this directory"),
+    with_scheduler: bool = typer.Option(False, "--with-scheduler", help="run the monitor scheduler inside this process"),
 ) -> None:
     import uvicorn
+    from apscheduler.schedulers.background import BackgroundScheduler
 
     from driftwatch.collector import create_app
+    from driftwatch.runtime import build_scheduler
 
     settings = _settings()
     if ui_dir is not None:
         settings.ui_dir = ui_dir
     store = make_store(settings)
-    uvicorn.run(create_app(store, settings), host=host or settings.host, port=port or settings.port, log_level="info")
+    runner = None
+    if with_scheduler:
+        runner = build_scheduler(settings, store, scheduler=BackgroundScheduler(timezone="UTC"))
+        runner.start()
+    try:
+        uvicorn.run(create_app(store, settings), host=host or settings.host, port=port or settings.port, log_level="info")
+    finally:
+        if runner is not None:
+            runner.scheduler.shutdown(wait=False)
 
 
 @app.command()
 def scheduler() -> None:
     from prometheus_client import start_http_server
 
-    from driftwatch.alerting import AlertManager, build_notifiers, default_rules, load_rules
-    from driftwatch.monitor import Monitor
-    from driftwatch.scheduler import MonitorScheduler, SchedulerMetrics
+    from driftwatch.runtime import build_scheduler
+    from driftwatch.scheduler import SchedulerMetrics
 
     settings = _settings()
     store = make_store(settings)
-    rules = load_rules(settings.alert_rules_path) if settings.alert_rules_path else default_rules()
-    alerts = AlertManager(store, rules, build_notifiers(settings))
     metrics = SchedulerMetrics()
     start_http_server(settings.scheduler_metrics_port, registry=metrics.registry)
-    runner = MonitorScheduler(
-        store, Monitor(store), alerts, metrics=metrics, sync_interval_seconds=settings.sync_interval_seconds
-    )
+    runner = build_scheduler(settings, store, metrics=metrics)
     typer.echo(f"scheduler running, metrics on :{settings.scheduler_metrics_port}")
     runner.start()
 
