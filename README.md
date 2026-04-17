@@ -77,11 +77,13 @@ driftwatch demo run
 
 This trains a logistic regression on Adult, registers five models (`adult-control`, `adult-covariate-shift`, `adult-prior-shift`, `adult-concept-drift`, `adult-null-burst`), uploads a reference set, replays 9000 events per model through the client with drift injected half way, and backfills the monitor windows so the dashboard has history.
 
-Run the scheduler to keep evaluating the latest window and to send alerts:
+DuckDB allows one process per database file, so in local mode the scheduler cannot be a second process. Start the collector with the scheduler inside it to keep evaluating the latest window and to send alerts:
 
 ```
-driftwatch scheduler
+driftwatch serve --ui-dir ui --with-scheduler
 ```
+
+With PostgreSQL, `driftwatch scheduler` runs it as its own process, which is what the compose file does.
 
 ### Docker Compose
 
@@ -118,6 +120,7 @@ All settings are environment variables with the `DRIFTWATCH_` prefix, or entries
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TO` | unset | enable the email notifier |
 | `SCHEDULER_METRICS_PORT` | `9102` | scheduler Prometheus port |
 | `SYNC_INTERVAL_SECONDS` | `60` | how often the scheduler picks up new or changed models |
+| `COMPACT_INTERVAL_SECONDS` | `21600` | how often the scheduler merges small Parquet files in local mode, `0` disables |
 
 Per-model monitoring settings (`MonitorConfig`) are sent when registering a model: `window_seconds`, `interval_seconds`, `min_samples`, `min_labeled`, `alpha` and the thresholds in the table above.
 
@@ -158,7 +161,7 @@ Each reference row is `{"features": {...}, "prediction": ..., "score": ..., "emb
 ### CLI
 
 ```
-driftwatch serve                       run the collector
+driftwatch serve [--with-scheduler]    run the collector, optionally with the scheduler inside
 driftwatch scheduler                   run monitors and alerts
 driftwatch db upgrade                  apply Alembic migrations (PostgreSQL)
 driftwatch models list

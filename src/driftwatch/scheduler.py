@@ -18,6 +18,7 @@ from driftwatch.types import MetricResult
 logger = logging.getLogger("driftwatch.scheduler")
 
 SYNC_JOB_ID = "sync-models"
+COMPACT_JOB_ID = "compact-store"
 JOB_PREFIX = "monitor:"
 
 
@@ -44,6 +45,7 @@ class MonitorScheduler:
         scheduler: BaseScheduler | None = None,
         metrics: SchedulerMetrics | None = None,
         sync_interval_seconds: int = 60,
+        compact_interval_seconds: int = 0,
         clock: Callable[[], datetime] = utcnow,
     ) -> None:
         self.store = store
@@ -52,6 +54,7 @@ class MonitorScheduler:
         self.scheduler = scheduler or BlockingScheduler(timezone="UTC")
         self.metrics = metrics or SchedulerMetrics()
         self.sync_interval_seconds = sync_interval_seconds
+        self.compact_interval_seconds = compact_interval_seconds
         self.clock = clock
 
     def run_model(self, name: str, window_end: datetime | None = None) -> list[MetricResult]:
@@ -71,6 +74,18 @@ class MonitorScheduler:
         for alert in self.alerts.process(name, results):
             self.metrics.alerts.labels(name, alert.level).inc()
         return results
+
+    def compact_all(self) -> int:
+        compact = getattr(self.store, "compact", None)
+        if compact is None:
+            return 0
+        merged = 0
+        for record in self.store.list_models():
+            try:
+                merged += compact(record.name)
+            except Exception:
+                logger.exception("compaction failed for %s", record.name)
+        return merged
 
     def run_cycle(self) -> dict[str, int]:
         return {m.name: len(self.run_model(m.name)) for m in self.store.list_models()}
@@ -108,4 +123,13 @@ class MonitorScheduler:
             replace_existing=True,
             max_instances=1,
         )
+        if self.compact_interval_seconds > 0 and hasattr(self.store, "compact"):
+            self.scheduler.add_job(
+                self.compact_all,
+                "interval",
+                seconds=self.compact_interval_seconds,
+                id=COMPACT_JOB_ID,
+                replace_existing=True,
+                max_instances=1,
+            )
         self.scheduler.start()

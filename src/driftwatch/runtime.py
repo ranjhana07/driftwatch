@@ -24,4 +24,5 @@ def build_scheduler(
         scheduler=scheduler,
         metrics=metrics,
         sync_interval_seconds=settings.sync_interval_seconds,
+        compact_interval_seconds=settings.compact_interval_seconds,
     )

@@ -13,7 +13,7 @@ compile:
 	for f in ui/js/*.js; do node --check $$f; done
 
 serve:
-	$(PYTHON) -m driftwatch serve --ui-dir ui
+	$(PYTHON) -m driftwatch serve --ui-dir ui --with-scheduler
 
 scheduler:
 	$(PYTHON) -m driftwatch scheduler

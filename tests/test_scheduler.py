@@ -88,3 +88,24 @@ def test_sync_jobs_follows_registered_models(setup):
     assert set(jobs) == {f"{JOB_PREFIX}churn", f"{JOB_PREFIX}fraud"}
     assert jobs[f"{JOB_PREFIX}churn"].trigger.interval == timedelta(seconds=240)
     assert jobs[f"{JOB_PREFIX}fraud"].trigger.interval == timedelta(seconds=30)
+
+
+def test_compact_all_merges_local_parquet_parts(tmp_path):
+    from driftwatch.store.duck import DuckStore
+
+    duck = DuckStore(tmp_path)
+    duck.upsert_model(ModelRecord(name="churn"))
+    rows = make_rows(60)
+    for i in range(0, 60, 20):
+        duck.add_events(to_events(rows[i : i + 20]))
+    runner = MonitorScheduler(
+        duck, Monitor(duck), AlertManager(duck, [], {}), scheduler=BackgroundScheduler(), metrics=SchedulerMetrics()
+    )
+    assert runner.compact_all() == 3
+    assert duck.event_count("churn") == 60
+    duck.close()
+
+
+def test_compact_all_is_a_noop_for_sql_stores(setup):
+    scheduler, _, _ = setup
+    assert scheduler.compact_all() == 0

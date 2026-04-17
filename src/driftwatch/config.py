@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     smtp_to: str | None = None
     scheduler_metrics_port: int = 9102
     sync_interval_seconds: int = 60
+    compact_interval_seconds: int = 21600
 
 
 def make_store(settings: Settings) -> Store:
