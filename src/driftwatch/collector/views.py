@@ -9,7 +9,7 @@ from driftwatch.types import MetricResult
 def heatmap(results: Sequence[MetricResult]) -> dict[str, Any]:
     drift = [r for r in results if r.kind == "drift"]
     windows = sorted({r.window_end for r in drift})
-    features = sorted({r.feature for r in drift})
+    features = sorted({r.feature for r in drift}, key=lambda f: (f.startswith("__"), f))
     window_index = {w: i for i, w in enumerate(windows)}
     feature_index = {f: i for i, f in enumerate(features)}
     cells: dict[tuple[int, int], MetricResult] = {}

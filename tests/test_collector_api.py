@@ -195,3 +195,11 @@ def test_cors_headers_when_configured(store):
         assert response.headers["access-control-allow-origin"] == "http://localhost:8080"
         other = c.get("/healthz", headers={"Origin": "http://evil.example"})
         assert "access-control-allow-origin" not in other.headers
+
+
+def test_heatmap_lists_model_outputs_after_input_features(client):
+    full_flow(client, shift=10)
+    features = client.get("/v1/models/churn/heatmap").json()["features"]
+    first_output = next(i for i, f in enumerate(features) if f.startswith("__"))
+    assert all(f.startswith("__") for f in features[first_output:])
+    assert features[:first_output] == sorted(features[:first_output])
