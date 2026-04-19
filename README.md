@@ -284,6 +284,15 @@ driftwatch bench overhead --out results
 
 The call latency is the cost to the serving thread: the event goes on a queue and a background thread does the work. The maximum single call in that run was 199 ms, a pause rather than a typical cost. The throughput test runs the client and the collector on the same machine, so they compete for CPU. PostgreSQL mode and the Docker Compose stack were not benchmarked.
 
+## Limitations
+
+- Docker Compose, PostgreSQL mode and the Grafana dashboard were not run during development (no Docker on the development machine). The SQL store and migrations are tested on SQLite only.
+- Local mode keeps one DuckDB file, so only one process can open it. Use `serve --with-scheduler` or PostgreSQL.
+- Duplicate event ids are dropped on read in local mode, not on write, so the accepted count in the ingest response can overstate.
+- Embedding tests subsample to 400 reference and 400 current points, and the domain classifier to 1000 per side, to keep a window evaluation to about a second.
+- Thresholds are defaults tuned on the Adult demo only. Expect to adjust them per model, and look at the false positive rate on your own clean traffic first.
+- Performance checks need labels. Their delay is the label delay plus the window length.
+
 ## Project layout
 
 ```

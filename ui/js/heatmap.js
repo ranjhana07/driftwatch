@@ -1,5 +1,11 @@
 import { formatTime } from "./models.js";
 
+const OUTPUT_LABELS = { __embedding: "embedding", __score: "model score", __prediction: "predicted class" };
+
+function featureLabel(name) {
+  return OUTPUT_LABELS[name] || name;
+}
+
 const LEVEL_COLORS = ["#d9e4df", "#e8d27a", "#e9a24a", "#d4472b", "#8b1a1a"];
 
 export function renderHeatmap(chart, data, onCellClick) {
@@ -23,7 +29,7 @@ export function renderHeatmap(chart, data, onCellClick) {
         formatter: (point) => {
           const [x, y, severity] = point.value;
           const state = point.data.flagged ? "flagged" : "ok";
-          return `${data.features[y]}<br>${formatTime(data.windows[x])}<br>severity ${severity.toFixed(2)} (${point.data.metric}, ${state})`;
+          return `${featureLabel(data.features[y])}<br>${formatTime(data.windows[x])}<br>severity ${severity.toFixed(2)} (${point.data.metric}, ${state})`;
         },
       },
       grid: { left: 130, right: 24, top: 12, bottom: 78 },
@@ -33,7 +39,7 @@ export function renderHeatmap(chart, data, onCellClick) {
         splitArea: { show: false },
         axisLabel: { hideOverlap: true, rotate: 30 },
       },
-      yAxis: { type: "category", data: data.features, inverse: true, axisLabel: { interval: 0 } },
+      yAxis: { type: "category", data: data.features, inverse: true, axisLabel: { interval: 0, formatter: featureLabel } },
       visualMap: {
         type: "piecewise",
         orient: "horizontal",
