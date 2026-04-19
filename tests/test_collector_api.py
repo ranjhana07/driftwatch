@@ -203,3 +203,17 @@ def test_heatmap_lists_model_outputs_after_input_features(client):
     first_output = next(i for i, f in enumerate(features) if f.startswith("__"))
     assert all(f.startswith("__") for f in features[first_output:])
     assert features[:first_output] == sorted(features[:first_output])
+
+
+def test_oversized_batches_are_rejected(client):
+    row = event_json(make_rows(1)[0])
+    events = [{**row, "event_id": f"e{i}"} for i in range(5001)]
+    assert client.post("/v1/events", json={"events": events}).status_code == 422
+
+
+def test_duplicate_ingest_does_not_double_count_events(client, store):
+    rows = make_rows(10)
+    body = {"events": [event_json(r) for r in rows]}
+    client.post("/v1/events", json=body)
+    client.post("/v1/events", json=body)
+    assert store.event_count("churn") == 10

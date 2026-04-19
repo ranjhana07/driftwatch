@@ -25,7 +25,7 @@ def env(tmp_path, monkeypatch):
 def test_version():
     result = runner.invoke(app, ["version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.1.0"
+    assert result.stdout.strip() == "0.3.0"
 
 
 def test_register_and_list_models(env):
