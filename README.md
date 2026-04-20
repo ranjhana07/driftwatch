@@ -69,13 +69,13 @@ No database needed. Events are written as Parquet files and metadata goes into a
 driftwatch serve --ui-dir ui
 ```
 
-Open http://127.0.0.1:8000. In another terminal, replay the demo traffic (downloads the UCI Adult dataset from OpenML on first use):
+Open http://127.0.0.1:8000 (`make serve` does the same). In another terminal, replay the demo traffic (downloads the UCI Adult dataset from OpenML on first use):
 
 ```
 driftwatch demo run
 ```
 
-This trains a logistic regression on Adult, registers five models (`adult-control`, `adult-covariate-shift`, `adult-prior-shift`, `adult-concept-drift`, `adult-null-burst`), uploads a reference set, replays 9000 events per model through the client with drift injected half way, and backfills the monitor windows so the dashboard has history.
+(`make demo`.) This trains a logistic regression on Adult, registers five models (`adult-control`, `adult-covariate-shift`, `adult-prior-shift`, `adult-concept-drift`, `adult-null-burst`), uploads a reference set, replays 9000 events per model through the client with drift injected half way, and backfills the monitor windows so the dashboard has history.
 
 DuckDB allows one process per database file, so in local mode the scheduler cannot be a second process. Start the collector with the scheduler inside it to keep evaluating the latest window and to send alerts:
 
@@ -324,4 +324,4 @@ pytest
 
 The suite needs no network, API keys or running services. Statistical code is tested against scipy and scikit-learn reference values (KS statistic and p-value, Wasserstein distance, chi-square, Jensen-Shannon, AUC, F1, calibration curve, RMSE) and against loop-based reference implementations (PSI, MMD). The store contract tests run against SQLite and DuckDB; the collector, monitor, scheduler and CLI tests run on both. Notifiers are tested with `httpx.MockTransport` and a fake SMTP class. `tests/test_demo_end_to_end.py` starts a real collector in a thread and sends traffic through the SDK.
 
-`make compile` byte-compiles the package and syntax-checks the UI scripts with Node.
+`make test` runs the suite and `make compile` byte-compiles the package and syntax-checks the UI scripts with Node.
